@@ -1,11 +1,11 @@
 ## Google Alert RSS 変換
 
--   Google Alert の生成する RSS を変換
+-   Google Alert の生成する RSS を Slack / Teams 等から使いやすくするために変換
 -   Google Cloud Functions の利用を想定
 -   機能
-    -   URL を参照先に変換し、Slack 等 で URL 展開されるようにする
-    -   重複内容のエントリを除去
-    -   余計な情報の削除
+    -   エントリの URL を参照先に変換し、Slack 等 で URL 展開されるようにする
+    -   重複タイトルのエントリを除去
+    -   余計な修飾や情報の削除
 
 ## 利用方法
 
