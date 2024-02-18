@@ -25,10 +25,13 @@ def is_valid_url(url: str) -> bool:
 
 
 def get_canonical_url(url: str) -> str:
+    if url is None or url == "":
+        return None
     canonical_url: str = url
     url_obj: urllib.parse.ParseResult = urllib.parse.urlparse(canonical_url)
     query_dict: dict = urllib.parse.parse_qs(url_obj.query)
-    canonical_url = query_dict["url"][0]
+    if "url" in query_dict and len(query_dict["url"]) > 0:
+        canonical_url = query_dict["url"][0]
     return canonical_url
 
 

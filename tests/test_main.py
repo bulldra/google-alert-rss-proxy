@@ -21,10 +21,25 @@ def test_taranslate() -> None:
     assert "Google アラート" in result
 
 
+def test_get_canonical_url() -> None:
+    assert main.get_canonical_url(None) is None
+    assert main.get_canonical_url("") is None
+    assert main.get_canonical_url("https://example.com") == "https://example.com"
+    assert (
+        main.get_canonical_url(
+            "https://www.google.com/url?rct=j&sa=t&url=https://newspicks.com/news/95\
+99747/body/&ct=ga&cd=CAIyHDhhM2JmZTQ3YWU1YjVjMjI6Y28uanA6amE6SlA&usg=AOvVaw3vDIV4RYg\
+RtMJOxCK2NtR-"
+        )
+        == "https://newspicks.com/news/9599747/body/"
+    )
+
+
 def test_is_duplicate() -> None:
 
     titles: set[str] = {
         "ChatGPTを「業務効率化」にしか使わない人の盲点、新しいフロンティアを切り開くこともできる",
+        "面倒なことはChatGPTにやらせよう",
     }
 
     assert main.is_duplicate(
@@ -47,7 +62,12 @@ def test_is_duplicate() -> None:
         "ChatGPTで業務効率化しよう",
     )
 
+    assert main.is_duplicate(
+        titles,
+        "面倒なことはChatGPTにやらせたい",
+    )
+
     assert not main.is_duplicate(
         titles,
-        "面倒なことはChatGPTにやらせよう",
+        "全てをChatGPTにやらせたい",
     )
