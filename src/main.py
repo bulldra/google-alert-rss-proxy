@@ -6,6 +6,7 @@ import feedparser
 import flask
 import functions_framework
 import google.cloud.logging
+import Levenshtein
 from feedgen.feed import FeedGenerator
 
 logging_client: google.cloud.logging.Client = google.cloud.logging.Client()
@@ -31,6 +32,13 @@ def get_canonical_url(url: str) -> str:
     return canonical_url
 
 
+def is_duplicate(titles: set[str], title) -> bool:
+    for t in titles:
+        if Levenshtein.ratio(t, title) > 0.7:
+            return True
+    return False
+
+
 def translate(url: str) -> str:
     feed: feedparser.FeedParserDict = feedparser.parse(url)
     fg = FeedGenerator()
@@ -42,7 +50,7 @@ def translate(url: str) -> str:
     for entry in feed.entries:
         title: str = re.sub(r"<b>", "", entry.title)
         title = re.sub(r"</b>", "", title)
-        if title in titles:
+        if is_duplicate(titles, title):
             continue
         titles.add(title)
         fe = fg.add_entry()
@@ -58,10 +66,10 @@ def translate(url: str) -> str:
 def main(request: flask.Request):
     if request.method != "GET":
         return ("Only GET requests are accepted", 405)
-    if request.args.get("url") is None:
-        return ("Missing required parameter 'url'", 400)
+    if request.args.get("feed") is None:
+        return ("Missing required parameter 'feed'", 400)
 
-    url: str = request.args.get("url")
+    url: str = request.args.get("feed")
     logger.debug("URL: %s", url)
     if is_valid_url(url) is False:
         return (f"{url} is Invalid URL", 400)
