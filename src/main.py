@@ -37,16 +37,18 @@ def translate(url: str) -> str:
     fg.title(feed.feed.title)
     fg.link(href=feed.feed.links[0].href)
     fg.description(feed.feed.title)
-    feed.entries.sort(key=lambda x: x.published, reverse=False)
+    feed.entries.sort(key=lambda x: x.published)
     titles: set[str] = set()
     for entry in feed.entries:
-        if entry.title in titles:
+        title: str = re.sub(r"<b>", "", entry.title)
+        title = re.sub(r"</b>", "", title)
+        if title in titles:
             continue
-        titles.add(entry.title)
+        titles.add(title)
         fe = fg.add_entry()
-        fe.title(entry.title)
+        fe.title(title)
         fe.link(href=get_canonical_url(entry.link))
-        fe.description(entry.content[0].value)
+        fe.description("")
         fe.published(entry.published)
         fe.updated(entry.updated)
     return fg.rss_str(pretty=True).decode("utf-8")
