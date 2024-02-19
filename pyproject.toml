@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "google-keyword-rss-translator"
+name = "google-alert-rss-proxy"
 version = "0.1.0"
 description = ""
 authors = ["bulldra <bulldra@gmail.com>"]
