@@ -1,11 +1,10 @@
 import logging
 
-import feedparser
 import flask
 import functions_framework
 import google.cloud.logging
 
-import utils
+from google_alert_feed import GoogleAlertsFeed
 
 app: flask.Flask = flask.Flask(__name__)
 
@@ -27,10 +26,8 @@ def main(request: flask.Request):
 
     url: str = request.args.get("feed")
     logger.debug("feed: %s", url)
-    if utils.is_valid_url(url) is False:
+
+    feed: GoogleAlertsFeed = GoogleAlertsFeed()
+    if feed.is_valid_url(url) is False:
         return (f"{url} is Invalid URL", 400)
-    try:
-        return flask.Response(utils.translate(url), 200, mimetype="application/rss+xml")
-    except feedparser.exceptions as e:
-        logger.error("Error while parsing feed: %s", e)
-        return ("Error while parsing feed", 500)
+    return flask.Response(feed.simplification(url), 200, mimetype="application/rss+xml")

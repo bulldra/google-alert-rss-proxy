@@ -1,7 +1,8 @@
-import utils
+from google_alert_feed import GoogleAlertsFeed
 
 
 def test_valid_url() -> None:
+    utils: GoogleAlertsFeed = GoogleAlertsFeed()
     result: bool = utils.is_valid_url(
         "https://www.google.co.jp/alerts/feeds/12345678901234567890/12345678901234567\
 890"
@@ -9,8 +10,9 @@ def test_valid_url() -> None:
     assert result is True
 
 
-def test_taranslate() -> None:
-    result: str = utils.translate(
+def test_simplification() -> None:
+    utils: GoogleAlertsFeed = GoogleAlertsFeed()
+    result: str = utils.simplification(
         "https://www.google.co.jp/alerts/feeds/12836160871432447773/91901909544411725\
 12"
     )
@@ -22,6 +24,7 @@ def test_taranslate() -> None:
 
 
 def test_get_canonical_url() -> None:
+    utils: GoogleAlertsFeed = GoogleAlertsFeed()
     assert utils.get_canonical_url(None) is None
     assert utils.get_canonical_url("") is None
     assert utils.get_canonical_url("https://example.com") == "https://example.com"
@@ -36,38 +39,32 @@ RtMJOxCK2NtR-"
 
 
 def test_is_duplicate() -> None:
-
-    titles: set[str] = {
+    utils: GoogleAlertsFeed = GoogleAlertsFeed()
+    utils._exist_titles: set[str] = {
         "ChatGPTを「業務効率化」にしか使わない人の盲点、新しいフロンティアを切り開くこともできる",
         "面倒なことはChatGPTにやらせよう",
     }
 
     assert utils.is_duplicate(
-        titles,
         "ChatGPTを「業務効率化」にしか使わない人の盲点、新しいフロンティアを切り開くこともできる",
     )
 
     assert utils.is_duplicate(
-        titles,
         "ChatGPTを「業務効率化」にしか使わない人の盲点 新しいフロンティアを切り開くこともできる",
     )
 
     assert utils.is_duplicate(
-        titles,
         "ChatGPTを「業務効率化」にしか使わない人の盲点",
     )
 
     assert not utils.is_duplicate(
-        titles,
         "ChatGPTで業務効率化しよう",
     )
 
     assert utils.is_duplicate(
-        titles,
         "面倒なことはChatGPTにやらせたい",
     )
 
     assert not utils.is_duplicate(
-        titles,
         "全てをChatGPTにやらせたい",
     )
