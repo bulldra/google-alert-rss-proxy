@@ -56,6 +56,5 @@ class GoogleAlertsFeed:
             fe = fg.add_entry()
             fe.title(title)
             fe.link(href=self.get_canonical_url(entry.link))
-            fe.description("")
             fe.published(entry.published)
         return fg.rss_str(pretty=True).decode("utf-8")
