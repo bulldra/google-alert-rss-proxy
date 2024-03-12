@@ -10,6 +10,21 @@ def test_valid_url() -> None:
     assert result is True
 
 
+def test_black_list_url() -> None:
+    utils: GoogleAlertsFeed = GoogleAlertsFeed()
+    result: bool = utils.is_black_list_url(
+        "https://diamond.jp/articles/-/123456789012\
+34567890"
+    )
+    assert result is True
+
+    result: bool = utils.is_black_list_url(
+        "https://diamojp/articles/-/123456789012\
+34567890"
+    )
+    assert result is False
+
+
 def test_simplification() -> None:
     utils: GoogleAlertsFeed = GoogleAlertsFeed()
     result: str = utils.simplification(
