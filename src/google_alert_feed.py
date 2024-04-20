@@ -106,11 +106,6 @@ class GoogleAlertsFeed:
             if not title or self.is_duplicate(title):
                 continue
             self._exist_titles.add(title)
-
-            print(title)
-            print(url)
-            print(entry.published)
-
             fe = fg.add_entry()
             fe.title(title)
             fe.link(href=url)
