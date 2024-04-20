@@ -4,32 +4,55 @@ from google_alert_feed import GoogleAlertsFeed
 def test_valid_url() -> None:
     utils: GoogleAlertsFeed = GoogleAlertsFeed()
     result: bool = utils.is_valid_url(
-        "https://www.google.co.jp/alerts/feeds/12345678901234567890/12345678901234567\
-890"
+        "https://www.google.co.jp/alerts/feeds/1234567890"
+        "1234567890/12345678901234567890"
     )
     assert result is True
 
 
-def test_black_list_url() -> None:
+def test_is_black_list_url() -> None:
     utils: GoogleAlertsFeed = GoogleAlertsFeed()
-    result: bool = utils.is_black_list_url(
-        "https://diamond.jp/articles/-/123456789012\
-34567890"
-    )
-    assert result is True
 
-    result: bool = utils.is_black_list_url(
-        "https://diamojp/articles/-/123456789012\
-34567890"
+    assert (
+        utils.is_black_list_url("https://diamond.jp/articles/-/12345678901234567890")
+        is True
     )
-    assert result is False
+    assert (
+        utils.is_black_list_url("https://diamojp/articles/-/12345678901234567890")
+        is False
+    )
+    assert (
+        utils.is_black_list_url("https://expresso222.com.br/list/57_13844_58?kg=dy")
+        is True
+    )
+    assert (
+        utils.is_black_list_url("https://expresso222.com/list/57_13844_58?kg=dy")
+        is False
+    )
+    assert (
+        utils.is_black_list_url("https://qiita.com/kabumira/12345678901234567890")
+        is True
+    )
+    assert (
+        utils.is_black_list_url(
+            "https://lewiscs.com/c/%E6%97%A5%E6%9C%AC-%E3"
+            "%81%AE-%E3%83%88%E3%83%AC%E3%83%B3%E3%83%89"
+        )
+        is True
+    )
+    assert (
+        utils.is_black_list_url(
+            "https://propertyratings.co.in/c/web-%E3%83%9E"
+            "%E3%83%BC%E3%82%B1%E3%83%86%E3%82%A3%E3%83%B3%E3%82%B0-%E3%81%A8-%E3%81%AF"
+        )
+        is True
+    )
 
 
 def test_simplification() -> None:
     utils: GoogleAlertsFeed = GoogleAlertsFeed()
     result: str = utils.simplification(
-        "https://www.google.co.jp/alerts/feeds/12836160871432447773/91901909544411725\
-12"
+        "https://www.google.co.jp/alerts/feeds/12836160871432447773/6221419027880576930"
     )
     print(result)
     assert result is not None
