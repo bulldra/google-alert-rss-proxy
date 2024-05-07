@@ -6,7 +6,7 @@ gcloud functions deploy ${FUNCTION_NAME} \
 	--runtime=python311 \
 	--trigger-http \
 	--allow-unauthenticated \
-	--timeout=3s \
+	--timeout=5s \
 	--min-instances=0 \
 	--max-instances=10 \
 	--memory=256Mi \

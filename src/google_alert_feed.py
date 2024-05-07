@@ -32,6 +32,7 @@ class GoogleAlertsFeed:
 
         for target_tld in [
             "ar",
+            "be",
             "br",
             "buzz",
             "de",
@@ -42,6 +43,7 @@ class GoogleAlertsFeed:
             "lv",
             "pa",
             "tg",
+            "today"
         ]:
             if re.match(rf"^https?://.+\.{target_tld}/.*$", url) is not None:
                 return True
@@ -63,6 +65,10 @@ class GoogleAlertsFeed:
             "symkorea.com",
             "doda.jp",
             "paypayfleamarket.yahoo.co.jp",
+            "lepeninsulabay.com",
+            "uneptiterando.com",
+            "wearethebulb.com",
+            "jdehrjlp.rgr.jp",
         ]:
             if re.match(rf"^https?://.*{target_domain}/.*$", url) is not None:
                 return True
