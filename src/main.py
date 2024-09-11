@@ -22,7 +22,7 @@ def main(request: flask.Request):
     if request.method != "GET":
         return ("Only GET requests are accepted", 405)
     if request.args.get("feed") is None:
-        return ("Missing required parameter 'feed'", 400)
+        return flask.render_template("/index.html")
 
     url: str = request.args.get("feed")
     logger.debug("feed: %s", url)

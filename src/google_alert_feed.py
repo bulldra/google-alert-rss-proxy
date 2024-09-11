@@ -43,7 +43,7 @@ class GoogleAlertsFeed:
             "lv",
             "pa",
             "tg",
-            "today"
+            "today",
         ]:
             if re.match(rf"^https?://.+\.{target_tld}/.*$", url) is not None:
                 return True
@@ -69,6 +69,12 @@ class GoogleAlertsFeed:
             "uneptiterando.com",
             "wearethebulb.com",
             "jdehrjlp.rgr.jp",
+            "en-japan.com",
+            "institutdentalbosch.com",
+            "persol-mk.co.jp",
+            "hatalike.jp",
+            "baitoru.com",
+            "ycoaskix.crap.jp",
         ]:
             if re.match(rf"^https?://.*{target_domain}/.*$", url) is not None:
                 return True
@@ -76,6 +82,16 @@ class GoogleAlertsFeed:
         for target in [
             r"^https?://diamond\.jp/articles/-/.*$",
             r"^https?://qiita\.com/kabumira/.*$",
+            r"^https?://crowdworks\.jp/public/jobs/.*$",
+            r"^https?://haken\.rikunabi\.com/D/viewjob/.*$",
+            r"^https?://careernavigate\.jp/job-detail/.*$",
+            r"^https?://townwork\.net/detail/.*$",
+            r"^https?://www\.r-agent\.com/kensaku/kyujin/.*$",
+            r"^https?://www\.biccamera\.com/bc/item/.*$",
+            r"^https?://next\.rikunabi\.com/viewjob/.*$",
+            r"^https?://type\.career-agent\.jp/job/.*$",
+            r"^https?://tenshoku\.mynavi\.jp/.*$",
+            r"^https?://directscout\.recruit\.co\.jp/job_descriptions/.*$",
         ]:
             if re.match(target, url) is not None:
                 return True

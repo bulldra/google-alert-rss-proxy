@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>URL Generator</title>
+	</head>
+	<body>
+		<h1>URL Generator</h1>
+		<label for="inputFeed">Feed:</label>
+		<input type="text" id="inputFeed" placeholder="Enter feed" size="80" />
+		<button onclick="generateURL()">Generate URL</button>
+		<p id="result"></p>
+
+		<script>
+			function generateURL() {
+				var inputFeed = document.getElementById('inputFeed').value
+				var baseURL = window.location.href
+				var params = new URLSearchParams({
+					feed: inputFeed,
+				})
+				var fullURL = `${baseURL}?${params.toString()}`
+				document.getElementById('result').innerText = fullURL
+			}
+		</script>
+	</body>
+</html>
