@@ -1,27 +1,101 @@
 <!DOCTYPE html>
 <html lang="ja">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>URL Generator</title>
-	</head>
-	<body>
-		<h1>URL Generator</h1>
-		<label for="inputFeed">Feed:</label>
-		<input type="text" id="inputFeed" placeholder="Enter feed" size="80" />
-		<button onclick="generateURL()">Generate URL</button>
-		<p id="result"></p>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Generator</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        label {
+            font-size: 1.1rem;
+            color: #555;
+        }
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        /* 結果部分のデザイン */
+        #result {
+            font-size: 1rem;
+            color: #333;
+            margin-top: 20px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            word-wrap: break-word;
+            display: none; /* 初期表示は非表示に */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>URL Generator</h1>
+        <label for="inputFeed">Feed:</label>
+        <input type="text" id="inputFeed" placeholder="Enter feed">
+        <button onclick="generateURL()">Generate URL</button>
+        <p id="result"></p>
+    </div>
 
-		<script>
-			function generateURL() {
-				var inputFeed = document.getElementById('inputFeed').value
-				var baseURL = window.location.href
-				var params = new URLSearchParams({
-					feed: inputFeed,
-				})
-				var fullURL = `${baseURL}?${params.toString()}`
-				document.getElementById('result').innerText = fullURL
-			}
-		</script>
-	</body>
+    <script>
+        function generateURL() {
+            // 入力値を取得
+            var inputFeed = document.getElementById('inputFeed').value;
+
+            // 現在のページの完全なURLを取得
+            var currentURL = window.location.href;
+
+            // URLオブジェクトを生成してクエリパラメータを追加
+            var url = new URL(currentURL);
+            url.searchParams.set('feed', inputFeed);
+
+            // 完全なURLを生成
+            var fullURL = url.toString();
+
+            // 結果を表示
+            var resultElement = document.getElementById('result');
+            resultElement.innerText = fullURL;
+            resultElement.style.display = 'block'; // 結果を表示
+        }
+    </script>
+</body>
 </html>
