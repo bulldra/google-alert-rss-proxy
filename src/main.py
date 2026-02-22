@@ -24,7 +24,9 @@ def main(request: flask.Request):
     if request.args.get("feed") is None:
         return flask.render_template("/index.html")
 
-    url: str = request.args.get("feed")
+    url: str | None = request.args.get("feed")
+    if url is None:
+        return flask.render_template("/index.html")
     logger.debug("feed: %s", url)
 
     feed: GoogleAlertsFeed = GoogleAlertsFeed()

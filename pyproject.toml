@@ -1,22 +1,43 @@
-[tool.poetry]
+[project]
 name = "google-alert-rss-proxy"
 version = "0.1.0"
 description = ""
-authors = ["bulldra <bulldra@gmail.com>"]
+authors = [{ name = "bulldra", email = "bulldra@gmail.com" }]
 readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "feedgen==1.0.0",
+    "feedparser==6.0.11",
+    "requests==2.32.3",
+    "flask==3.1.0",
+    "functions-framework==3.8.2",
+    "google-cloud-logging==3.11.3",
+    "python-levenshtein==0.26.1",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-feedgen = "^1.0.0"
-feedparser = "^6.0.11"
-requests = "^2.31.0"
-pytest = "^8.0.1"
-flask = "^3.0.2"
-functions-framework = "^3.5.0"
-google-cloud-logging = "^3.9.0"
-python-levenshtein = "^0.25.0"
+[dependency-groups]
+dev = [
+    "mypy",
+    "pytest",
+    "ruff",
+]
 
+[tool.uv]
+package = false
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["feedparser", "feedgen.*", "Levenshtein"]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

@@ -1,6 +1,11 @@
 source ./.env
 
-gcloud functions deploy ${FUNCTION_NAME} \
+uv lock
+uv export --format requirements-txt --no-hashes --no-dev --no-emit-project -o src/requirements.txt
+
+CLOUDSDK_PYTHON=/opt/homebrew/bin/python3.11
+gcloud -q components update
+gcloud -q functions deploy ${FUNCTION_NAME} \
 	--gen2 \
 	--region=asia-northeast1 \
 	--runtime=python311 \
