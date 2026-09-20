@@ -63,8 +63,8 @@ flowchart TD
 
     subgraph JevTriage ["Jev 多段トリアージ"]
         S4 --> JevExit{"Jev アーリーイグジット"}
-        JevExit -->|求人 / AI Slop 60%以上 / 案内| E4["除外 (Early Exit: 即座に撃墜)"]
-        JevExit -->|宣伝・セールPR (Slop低)| Pass1["通過 (採用: 宣伝/セール)"]
+        JevExit -->|求人 / AI Slop高 / サイト案内| E4["除外 (Early Exit: 即座に撃墜)"]
+        JevExit -->|宣伝・セールPR| Pass1["通過 (採用: 宣伝/セール)"]
         JevExit -->|グレーゾーン| ScalarScore["係数を掛けたスカラー値化<br/>(総合フィードスコア: 0〜100%)"]
         ScalarScore --> ThresholdCheck{"総合スコア 45%以上<br/>かつ Slop 50%未満"}
         ThresholdCheck -->|不合格 / 薄い内容| E5["除外 (Early Exit: thin_content)"]
