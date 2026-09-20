@@ -1,0 +1,6 @@
+{
+  "gemini": {
+    "standard": "gemini-3.8-flash",
+    "mini": "gemini-3.5-flash-lite"
+  }
+}

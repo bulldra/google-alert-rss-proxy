@@ -62,5 +62,5 @@
 		"^https?://tenshoku\\.mynavi\\.jp/.*$",
 		"^https?://directscout\\.recruit\\.co\\.jp/job_descriptions/.*$"
 	],
-	"title_keywords": ["悪徳商法", "ネット詐欺", "投資詐欺", "駅伝", "人事"]
+	"title_keywords": []
 }

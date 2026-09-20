@@ -1,0 +1,7 @@
+{
+  "gcs_bucket_name": "bulldra-api-storage",
+  "gcs_root_dir": "google_alert_feed",
+  "ttl_minutes": 30,
+  "max_days": 7,
+  "max_feed_count": 100
+}

@@ -27,9 +27,14 @@ def main(request: flask.Request):
     url: str | None = request.args.get("feed")
     if url is None:
         return flask.render_template("/index.html")
-    logger.debug("feed: %s", url)
+    is_refresh: bool = request.args.get("refresh", "").lower() in ["true", "1", "yes"]
+    logger.debug("feed: %s (refresh=%s)", url, is_refresh)
 
     feed: GoogleAlertsFeed = GoogleAlertsFeed()
     if feed.is_valid_url(url) is False:
         return (f"{url} is Invalid URL", 400)
-    return flask.Response(feed.simplification(url), 200, mimetype="application/rss+xml")
+    return flask.Response(
+        feed.simplification(url, is_refresh=is_refresh),
+        200,
+        mimetype="application/rss+xml",
+    )

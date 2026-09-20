@@ -13,6 +13,10 @@ dependencies = [
     "functions-framework==3.8.2",
     "google-cloud-logging==3.11.3",
     "python-levenshtein==0.26.1",
+    "google-genai>=1.14.0",
+    "pydantic>=2.10.0",
+    "google-cloud-storage>=3.1.0",
+    "httpx>=0.28.1",
 ]
 
 [dependency-groups]
@@ -27,12 +31,23 @@ package = false
 
 [tool.mypy]
 python_version = "3.12"
+mypy_path = "src"
+explicit_package_bases = true
 warn_return_any = true
 warn_unused_configs = true
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["feedparser", "feedgen.*", "Levenshtein"]
+module = [
+    "feedparser",
+    "feedgen.*",
+    "Levenshtein",
+    "google.cloud",
+    "google.cloud.storage",
+    "google.cloud.*",
+    "dateutil",
+    "dateutil.*",
+]
 ignore_missing_imports = true
 
 [tool.ruff]
