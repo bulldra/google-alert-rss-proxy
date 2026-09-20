@@ -50,34 +50,31 @@ Google Alert が生成する RSS フィードを、Slack や RSS リーダー等
 ```mermaid
 flowchart TD
     Start["RSSフィード / Googleアラート"] --> Normalize["URL正規化 (Canonical URL抽出)"]
-    Normalize --> S1{"Stage 1: URLブラックリスト\n(TLD / ドメイン / 正規表現)"}
+    Normalize --> S1{"Stage 1: URLブラックリスト<br/>(TLD / ドメイン / 正規表現)"}
     S1 -->|マッチ| E1["除外 (Early Exit: blacklist_url)"]
 
-    S1 -->|通過| S2{"Stage 2: タイトルブラックリスト\n(特定NGキーワード)"}
+    S1 -->|通過| S2{"Stage 2: タイトルブラックリスト<br/>(特定NGキーワード)"}
     S2 -->|マッチ| E2["除外 (Early Exit: blacklist_title)"]
 
-    S2 -->|通過| S3{"Stage 3: 過去キャッシュ & 重複照合\n(GCS 7日間キャッシュ / 類似度 > 0.7)"}
+    S2 -->|通過| S3{"Stage 3: 過去キャッシュ & 重複照合<br/>(GCS 7日間 / 類似度0.7超)"}
     S3 -->|重複・既配信| E3["除外 (Early Exit: duplicate)"]
 
-    S3 -->|通過 (候補エントリ)| S4["Stage 4: Jev System One 評価\n(StateとQuestionの直交評価)"]
+    S3 -->|通過| S4["Stage 4: Jev System One 評価<br/>(StateとQuestionの直交評価)"]
 
     subgraph JevTriage ["Jev 多段トリアージ"]
         S4 --> JevExit{"Jev アーリーイグジット"}
-        JevExit -->|"求人確信度 高 (job_posting)\nまたは AI Slop 高 (>=60%)\nまたは サイト案内 (site_utility)"| E4["除外 (Early Exit: 即座に撃墜)"]
-        JevExit -->|"製品宣伝・セールPR (promo_marketing)\n※Slop低"| Pass1["通過 (採用: 宣伝/セール)"]
-        JevExit -->|グレーゾーン| ScalarScore["係数を掛けたスカラー値化\n(総合フィードスコア算出: 0〜100%)"]
-        ScalarScore --> ThresholdCheck{"総合スコア >= 45%\nかつ Slop < 50%"}
-        ThresholdCheck -->|No / 薄い内容| E5["除外 (Early Exit: thin_content)"]
-        ThresholdCheck -->|Yes| Pass2["通過 (採用: 通常/必読)"]
+        JevExit -->|求人 / AI Slop 60%以上 / 案内| E4["除外 (Early Exit: 即座に撃墜)"]
+        JevExit -->|宣伝・セールPR (Slop低)| Pass1["通過 (採用: 宣伝/セール)"]
+        JevExit -->|グレーゾーン| ScalarScore["係数を掛けたスカラー値化<br/>(総合フィードスコア: 0〜100%)"]
+        ScalarScore --> ThresholdCheck{"総合スコア 45%以上<br/>かつ Slop 50%未満"}
+        ThresholdCheck -->|不合格 / 薄い内容| E5["除外 (Early Exit: thin_content)"]
+        ThresholdCheck -->|合格| Pass2["通過 (採用: 通常/必読)"]
     end
 
-    Pass1 --> Merge["新規採用 + 過去エントリのマージ\n(直近最大100件)"]
+    Pass1 --> Merge["新規採用 + 過去エントリのマージ<br/>(直近最大100件)"]
     Pass2 --> Merge
     Merge --> Output["クリーンな RSS 配信 & GCS キャッシュ保存"]
 ```
-
-
-
 
 ---
 
