@@ -319,10 +319,10 @@ def test_exclusion_logging(caplog: pytest.LogCaptureFixture) -> None:
     log_records = [rec.message for rec in caplog.records if rec.levelno == logging.INFO]
     log_text = "\n".join(log_records)
 
-    # 除外されたアイテムのみログに出力される
+    # 除外されたアイテムのみログに出力される（duplicate はログ対象外）
     assert "[EXCLUDED:blacklist_url] url=https://spam.xyz/bad" in log_text
     assert "[EXCLUDED:blacklist_title] url=https://example.com/title_ng" in log_text
-    assert "[EXCLUDED:duplicate] url=https://example.com/ok" in log_text
+    assert "[EXCLUDED:duplicate]" not in log_text
     # 採用されたアイテムはログに出力されない
     assert "PASSED" not in log_text
     assert "[EXCLUDED" in log_text

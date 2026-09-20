@@ -29,11 +29,10 @@ Google Alert が生成する RSS フィードを、Slack や RSS リーダー等
      - **価値ある記事の採用**: 技術解説 (`tech_guide`)、業界ニュース (`industry_news`)、考察 (`opinion_essay`)、新製品・セールPR (`promo_marketing`) などの有益コンテンツのみを通過。
 
 3. **除外URLのレビュー用ログ出力 (Logging)**
-   - パイプライン内で除外されたすべての URL は、除外理由とともに `INFO` レベルで出力されます。
+   - パイプライン内で除外された URL は、除外理由とともに `INFO` レベルで出力されます（※過去記事との重複 `duplicate` は大量に発生するためノイズ軽減としてログ対象外）。
    - 例:
      - `[EXCLUDED:blacklist_url] url=https://spam.xyz/..., title=...`
      - `[EXCLUDED:blacklist_title] url=https://..., title=...`
-     - `[EXCLUDED:duplicate] url=https://..., title=...`
      - `[EXCLUDED:job_posting] url=https://..., title=...`
      - `[EXCLUDED:ai_slop] url=https://..., title=... (slop=85%, score=15%)`
    - Cloud Logging で `jsonPayload.message =~ "\[EXCLUDED"` でクエリすることで、除外された URL と理由を簡単にレビューできます。

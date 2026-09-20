@@ -1,10 +1,6 @@
-import logging
-
 import Levenshtein
 
 from strategies.base import FeedItem, FilterStrategy
-
-_logger = logging.getLogger(__name__)
 
 
 class DuplicateFilter(FilterStrategy):
@@ -35,11 +31,6 @@ class DuplicateFilter(FilterStrategy):
                 continue
             if self.is_duplicate(item.title, item.url):
                 item.add_score(1.0, reason="duplicate")
-                _logger.info(
-                    "[EXCLUDED:duplicate] url=%s, title=%s",
-                    item.url,
-                    item.title,
-                )
                 continue
             self.exist_titles.add(item.title)
             self.exist_urls.add(item.url)
