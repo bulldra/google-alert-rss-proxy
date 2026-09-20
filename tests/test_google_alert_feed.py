@@ -11,8 +11,22 @@ FEED_URL = FEED_URL_BASE + "12836160871432447773/18160887076817308335"
 
 def test_valid_url() -> None:
     utils: GoogleAlertsFeed = GoogleAlertsFeed()
-    result: bool = utils.is_valid_url(FEED_URL)
-    assert result is True
+    assert utils.is_valid_url(FEED_URL) is True
+    assert (
+        utils.is_valid_url(
+            "https://www.google.com/alerts/feeds/12836160871432447773/8332173485365972887"
+        )
+        is True
+    )
+    assert (
+        utils.is_valid_url(
+            "http://google.com/alerts/feeds/12836160871432447773/8332173485365972887"
+        )
+        is True
+    )
+    assert utils.is_valid_url("https://example.com/alerts/feeds/123/456") is False
+    assert utils.is_valid_url("https://www.google.com/search?q=test") is False
+
 
 
 def test_is_black_list_url() -> None:

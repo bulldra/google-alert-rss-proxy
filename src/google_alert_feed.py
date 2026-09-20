@@ -137,7 +137,14 @@ class GoogleAlertsFeed:
         return hashlib.sha256(url.encode("utf-8")).hexdigest()[:20]
 
     def is_valid_url(self, url: str) -> bool:
-        return re.match(r"^https://www\.google\.co\.jp/alerts/feeds/\d+/\d+$", url) is not None
+        return (
+            re.match(
+                r"^https?://(?:www\.)?google\.(?:com|co\.jp|[a-z.]{2,})/alerts/feeds/\d+/\d+$",
+                url,
+            )
+            is not None
+        )
+
 
     def get_canonical_url(self, url: str | None) -> str | None:
         if url is None or url == "":
