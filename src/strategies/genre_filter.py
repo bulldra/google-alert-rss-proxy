@@ -20,6 +20,7 @@ JEV_QUESTIONS = {
             "Answer True if it offers substantial knowledge, insightful tech guides, "
             "genuine industry news, new product announcements, sale / deal notifications, "
             "PR marketing updates, or educational depth. "
+            "When provided, consider Bookmark Count and RSS Summary as key signals of substance. "
             "Answer False if it is merely a website homepage, login screen, navigation index, "
             "job listing / recruitment announcement, empty placeholder, or low-value SEO copy."
         ),
@@ -53,8 +54,12 @@ JEV_QUESTIONS = {
         "type": "score",
         "instructions": "Rate the urgency and substance for an RSS feed reader subscriber.",
         "criteria": [
-            "Skip / Noise (Homepage, login, job listing, site utility, empty content)",
             (
+                "Skip / Noise (Homepage, login, job listing / recruitment, "
+                "site utility, empty content)"
+            ),
+            (
+
                 "Standard Feed (Worth reading, standard news, product announcements, "
                 "sales / promotions, regular blog post, updates)"
             ),
@@ -72,12 +77,25 @@ JEV_QUESTIONS = {
             "industry_news": "Industry news, major release, or formal announcement",
             "opinion_essay": "Opinion, in-depth analysis, interview, or case study",
             "promo_marketing": "Sales campaign, product promotion, pricing, or commercial showcase",
-            "job_posting": "Job listing, hiring notice, recruitment announcement, or opportunity",
+            "job_posting": (
+                "Job listing, hiring notice, recruitment announcement, or career opportunity"
+            ),
             "site_utility": "Website homepage, login/auth page, terms of service, or nav index",
         },
     },
+    "human_depth": {
+        "type": "score",
+        "instructions": (
+            "Evaluate the presence of authentic human insight, primary experience, "
+            "or technical substance."
+        ),
+        "criteria": [
+            "AI Slop / Thin generic fluff / Zero depth",
+            "Standard / Mixed overview or curation",
+            "High Human Depth / Primary source / Authentic expertise or code",
+        ],
+    },
 }
-
 
 
 class GenreFilterStrategy(FilterStrategy):
@@ -104,7 +122,6 @@ class GenreFilterStrategy(FilterStrategy):
         )
         self._http_client = http_client
 
-
     def _get_api_key(self) -> str:
         if not self._api_key:
             self._api_key = os.getenv("jev_api_key") or os.getenv("JEV_API_KEY")
@@ -114,9 +131,26 @@ class GenreFilterStrategy(FilterStrategy):
 
     def _evaluate_single_item(self, item: FeedItem, client: httpx.Client) -> None:
         """単一のFeedItemに対してJev System One APIを呼び出し、除外または採用の判定を行う。"""
-        api_key = self._get_api_key()
         summary_snippet = item.summary[:1000].strip() if item.summary else ""
+        text_for_length = f"{item.title} {summary_snippet}".strip()
+        char_count = len(text_for_length)
+
+        # RSSメタデータトリアージ用文字数チェック:
+        # 通常のWeb本文用(150文字)ではなく、RSSメタデータは4文字未満のみ空・極小として除外
+        if char_count < 4:
+            item.add_score(1.0, reason="thin_content")
+            _logger.info(
+                "[EXCLUDED:thin_content] url=%s, title=%s (too short: %d chars < 4)",
+                item.url,
+                item.title,
+                char_count,
+            )
+            return
+
+
+        api_key = self._get_api_key()
         state_text = (
+            f"[RSS Feed Triage - Comprehensive Metadata & Content]\n"
             f"Title: {item.title}\n"
             f"URL: {item.url}\n"
             f"Meta Description: {summary_snippet}"
@@ -150,7 +184,7 @@ class GenreFilterStrategy(FilterStrategy):
         ai_slop_pct = int(round(slop_noul * 100))
         is_ai_slop = (ai_slop_pct >= int(round(self.slop_threshold * 100)))
 
-        # 総合フィードスコア (jevtest 準拠)
+        # 総合フィードスコア (jevtest 準拠: 0-100%)
         raw_pct = (
             (publish_noul * 0.35)
             + ((priority_score / 2.0) * 0.30)
@@ -161,7 +195,7 @@ class GenreFilterStrategy(FilterStrategy):
 
         item.category = selected_choice
 
-        # jevtest 準拠のトリアージ判定
+        # jevtest 準拠の 5 軸トリアージ判定
         if is_ai_slop:
             item.add_score(1.0, reason="ai_slop")
             _logger.info(
@@ -198,15 +232,26 @@ class GenreFilterStrategy(FilterStrategy):
                 feed_score_pct,
             )
         elif selected_choice == "promo_marketing" and slop_noul < 0.50:
+            # 製品宣伝・セール告知・PRマーケティング主体の記事は除外せず採用
             _logger.info(
-                "[PASSED:promo_marketing] url=%s, title=%s (score=%d%%)",
+                "[PASSED:promo_marketing] url=%s, title=%s (score=%d%%) [採用 (宣伝/セール)]",
+                item.url,
+                item.title,
+                feed_score_pct,
+            )
+        elif feed_score_pct >= 68 and slop_noul < 0.35:
+            # 高スコア必読記事
+            _logger.info(
+                "[PASSED:%s] url=%s, title=%s (score=%d%%) [採用 (必読)]",
+                selected_choice,
                 item.url,
                 item.title,
                 feed_score_pct,
             )
         elif feed_score_pct >= 45 and slop_noul < 0.50:
+            # 通常採用記事
             _logger.info(
-                "[PASSED:%s] url=%s, title=%s (score=%d%%)",
+                "[PASSED:%s] url=%s, title=%s (score=%d%%) [採用 (通常)]",
                 selected_choice,
                 item.url,
                 item.title,
@@ -215,13 +260,14 @@ class GenreFilterStrategy(FilterStrategy):
         else:
             item.add_score(1.0, reason="thin_content")
             _logger.info(
-                "[EXCLUDED:thin_content] url=%s, title=%s (low score=%d%%)",
+                "[EXCLUDED:thin_content] url=%s, title=%s (score=%d%% < 45%%) [基準未達 除外]",
                 item.url,
                 item.title,
                 feed_score_pct,
             )
 
     def filter(self, items: list[FeedItem]) -> list[FeedItem]:
+
         if not self.enabled or not items:
             return [item for item in items if not item.is_excluded]
 
