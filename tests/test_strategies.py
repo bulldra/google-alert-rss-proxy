@@ -8,6 +8,7 @@ from strategies import (
     DuplicateFilter,
     FeedItem,
     GeminiJobFilter,
+    GenreFilterStrategy,
 )
 from strategies.gemini_job import JobExclusionResult
 
@@ -296,16 +297,36 @@ def test_exclusion_logging(caplog: pytest.LogCaptureFixture) -> None:
         FeedItem(title="通常の技術記事", url="https://example.com/ok"),  # 重複
     ]
 
-    for stage in [url_filter, title_filter, duplicate_filter]:
+    mock_http_client = MagicMock()
+    mock_res = MagicMock()
+    mock_res.raise_for_status.return_value = None
+    mock_res.json.return_value = {
+        "answers": {
+            "should_publish": {"noul": 0.8},
+            "is_ai_slop": {"noul": 0.05},
+            "is_thin_or_useless": {"noul": 0.05},
+            "feed_priority": {"score": 1.5},
+            "feed_category": {"choice": "tech_guide"},
+        }
+    }
+    mock_http_client.post.return_value = mock_res
+    genre_filter = GenreFilterStrategy(api_key="test_key", http_client=mock_http_client)
+
+    for stage in [url_filter, title_filter, duplicate_filter, genre_filter]:
         items = stage.filter(items)
 
     # ログ出力内容を検証
     log_records = [rec.message for rec in caplog.records if rec.levelno == logging.INFO]
     log_text = "\n".join(log_records)
 
+    # 除外されたアイテムのみログに出力される
     assert "[EXCLUDED:blacklist_url] url=https://spam.xyz/bad" in log_text
     assert "[EXCLUDED:blacklist_title] url=https://example.com/title_ng" in log_text
     assert "[EXCLUDED:duplicate] url=https://example.com/ok" in log_text
+    # 採用されたアイテムはログに出力されない
+    assert "PASSED" not in log_text
+    assert "[EXCLUDED" in log_text
+
 
 
 

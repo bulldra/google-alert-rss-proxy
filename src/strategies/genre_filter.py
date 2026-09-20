@@ -232,31 +232,11 @@ class GenreFilterStrategy(FilterStrategy):
                 feed_score_pct,
             )
         elif selected_choice == "promo_marketing" and slop_noul < 0.50:
-            # 製品宣伝・セール告知・PRマーケティング主体の記事は除外せず採用
-            _logger.info(
-                "[PASSED:promo_marketing] url=%s, title=%s (score=%d%%) [採用 (宣伝/セール)]",
-                item.url,
-                item.title,
-                feed_score_pct,
-            )
-        elif feed_score_pct >= 68 and slop_noul < 0.35:
-            # 高スコア必読記事
-            _logger.info(
-                "[PASSED:%s] url=%s, title=%s (score=%d%%) [採用 (必読)]",
-                selected_choice,
-                item.url,
-                item.title,
-                feed_score_pct,
-            )
+            # 製品宣伝・セール告知・PRマーケティング主体の記事は除外せず採用（ログ出力なし）
+            pass
         elif feed_score_pct >= 45 and slop_noul < 0.50:
-            # 通常採用記事
-            _logger.info(
-                "[PASSED:%s] url=%s, title=%s (score=%d%%) [採用 (通常)]",
-                selected_choice,
-                item.url,
-                item.title,
-                feed_score_pct,
-            )
+            # 必読・通常採用記事（ログ出力なし）
+            pass
         else:
             item.add_score(1.0, reason="thin_content")
             _logger.info(
@@ -265,6 +245,7 @@ class GenreFilterStrategy(FilterStrategy):
                 item.title,
                 feed_score_pct,
             )
+
 
     def filter(self, items: list[FeedItem]) -> list[FeedItem]:
 
