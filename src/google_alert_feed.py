@@ -54,7 +54,10 @@ class GoogleAlertsFeed:
         # 順序: URLブラックリスト -> タイトルブラックリスト -> 重複判定 -> ジャンルブラックリスト
         self._url_filter = BlacklistUrlFilter(self._blacklist)
         self._title_filter = BlacklistTitleFilter(self._blacklist)
-        self._duplicate_filter = DuplicateFilter(similarity_threshold=0.7)
+        self._duplicate_filter = DuplicateFilter(
+            similarity_threshold=0.7,
+            enabled_jev=enable_gemini,
+        )
         self._genre_filter = GenreFilterStrategy(context=context, enabled=enable_gemini)
         self._gemini_filter = self._genre_filter
 

@@ -70,6 +70,66 @@ def test_duplicate_filter() -> None:
     assert filtered[1].title == "Go言語の並行処理入門"
 
 
+def test_duplicate_filter_with_jev_hit() -> None:
+    """Levenshtein距離が0.7未満でも、Jevのnoulが高い場合は重複として除外されることを検証。"""
+    mock_http_client = MagicMock()
+    mock_res = MagicMock()
+    mock_res.raise_for_status.return_value = None
+    mock_res.json.return_value = {
+        "answers": {
+            "is_duplicate": {"noul": 0.85},
+        }
+    }
+    mock_http_client.post.return_value = mock_res
+
+    strategy = DuplicateFilter(
+        similarity_threshold=0.7,
+        jev_threshold=0.60,
+        api_key="test_api_key",
+        http_client=mock_http_client,
+        exist_titles={"Anthropic、20億ドル規模の安全性体制を発表"},
+    )
+
+    # 類似度は約0.5〜0.6程度で従来のLevenshtein(0.7)ではすり抜けるが、Jevのnoulで重複判定される
+    item = FeedItem(
+        title="Anthropicが選んだのは20億ドルの安全体制 IPOの渦中",
+        url="https://example.com/new_story",
+    )
+    filtered = strategy.filter([item])
+    assert len(filtered) == 0
+    assert item.is_excluded
+    assert item.exclusion_score >= 1.0
+
+
+def test_duplicate_filter_with_jev_miss() -> None:
+    """類似候補があってもJevのnoulが低い場合は重複と判定されず採用されることを検証。"""
+    mock_http_client = MagicMock()
+    mock_res = MagicMock()
+    mock_res.raise_for_status.return_value = None
+    mock_res.json.return_value = {
+        "answers": {
+            "is_duplicate": {"noul": 0.15},
+        }
+    }
+    mock_http_client.post.return_value = mock_res
+
+    strategy = DuplicateFilter(
+        similarity_threshold=0.7,
+        jev_threshold=0.60,
+        api_key="test_api_key",
+        http_client=mock_http_client,
+        exist_titles={"Python 3.12の新機能まとめ"},
+    )
+
+    item = FeedItem(
+        title="Python 3.11のサポート終了予定について",
+        url="https://example.com/python_eol",
+    )
+    filtered = strategy.filter([item])
+    assert len(filtered) == 1
+    assert not item.is_excluded
+
+
 def test_gemini_job_filter_success() -> None:
     items = [
         FeedItem(

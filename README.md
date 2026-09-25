@@ -17,8 +17,8 @@ Google Alert が生成する RSS フィードを、Slack や RSS リーダー等
    - **Stage 2: タイトル ブラックリスト (`BlacklistTitleFilter`)**:
      - 「PR記事」「広告」「投資詐欺」などの特定 NG キーワードを含むタイトルを除外。
    - **Stage 3: 重複判定 (`DuplicateFilter`)**:
-     - 同一 URL の重複を除外。
-     - タイトルの類似度判定（レーベンシュタイン距離比 > 0.7）により、タイトルが酷似した重複記事を除外。
+     - 同一 URL の重複を即時除外。
+     - タイトルのレーベンシュタイン距離による高速候補抽出に加え、**Jev System One の `is_duplicate` (noul)** による意味的判定を行い、言い回しが異なる同一ニュース・重複記事も高精度に除外（Jev 未設定・通信障害時は従来の類似度判定へ自動フォールバック）。
      - **GCS キャッシュに蓄積された過去最大7日分の全エントリとも比較**し、過去に配信済みのエントリの再通知を防止。
    - **Stage 4: ジャンルブラックリスト (`GenreFilterStrategy`)**:
      - **Jev System One API** (`https://api.typesafe.ai/v1/systemone`) を活用し、高精度なトリアージ判定を実行。
@@ -55,7 +55,7 @@ flowchart TD
     S1 -->|通過| S2{"Stage 2: タイトルブラックリスト<br/>(特定NGキーワード)"}
     S2 -->|マッチ| E2["除外 (Early Exit: blacklist_title)"]
 
-    S2 -->|通過| S3{"Stage 3: 過去キャッシュ & 重複照合<br/>(GCS 7日間 / 類似度0.7超)"}
+    S2 -->|通過| S3{"Stage 3: 過去キャッシュ & 重複照合<br/>(GCS 7日間 / Jev noul & Levenshtein)"}
     S3 -->|重複・既配信| E3["除外 (Early Exit: duplicate)"]
 
     S3 -->|通過| S4["Stage 4: Jev System One 評価<br/>(StateとQuestionの直交評価)"]
