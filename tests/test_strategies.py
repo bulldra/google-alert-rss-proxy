@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import MagicMock
 
 import pytest
@@ -70,8 +71,8 @@ def test_duplicate_filter() -> None:
     assert filtered[1].title == "Go言語の並行処理入門"
 
 
-def test_duplicate_filter_with_jev_hit() -> None:
-    """Levenshtein距離が0.7未満でも、Jevのnoulが高い場合は重複として除外されることを検証。"""
+def test_duplicate_filter_with_jev_hit(caplog: pytest.LogCaptureFixture) -> None:
+    """Levenshtein距離が0.7未満でも、Jevのnoulが高い場合は重複として除外され、検証用ログが出力されることを検証。"""
     mock_http_client = MagicMock()
     mock_res = MagicMock()
     mock_res.raise_for_status.return_value = None
@@ -95,10 +96,17 @@ def test_duplicate_filter_with_jev_hit() -> None:
         title="Anthropicが選んだのは20億ドルの安全体制 IPOの渦中",
         url="https://example.com/new_story",
     )
-    filtered = strategy.filter([item])
+    with caplog.at_level(logging.INFO):
+        filtered = strategy.filter([item])
     assert len(filtered) == 0
     assert item.is_excluded
     assert item.exclusion_score >= 1.0
+
+    # Jev による重複判定のレビュー・閾値検証用ログが出力されていること
+    assert "[EXCLUDED:duplicate_jev]" in caplog.text
+    assert "noul=0.85" in caplog.text
+    assert "threshold=0.60" in caplog.text
+    assert "candidate=Anthropic、20億ドル規模の安全性体制を発表" in caplog.text
 
 
 def test_duplicate_filter_with_jev_miss() -> None:

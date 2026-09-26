@@ -99,33 +99,65 @@ class DuplicateFilter(FilterStrategy):
             _logger.warning("Jev duplicate evaluation failed, fallback to Levenshtein: %s", e)
         return None
 
-    def is_duplicate(self, title: str, url: str) -> bool:
+    def check_duplicate(
+        self, title: str, url: str
+    ) -> tuple[bool, str | None, float | None, str | None]:
+        """重複判定を行い、(重複フラグ, 理由, Jev noul値, マッチした候補タイトル) を返す。
+
+        理由:
+        - "url": URL完全一致
+        - "exact_title": タイトル完全一致
+        - "high_similarity": Levenshtein酷似 (>= high_similarity_threshold)
+        - "jev": Jev System One による意味的重複 (noul >= jev_threshold)
+        - "levenshtein_fallback": Jev未稼働時のLevenshtein閾値超過
+        - None: 重複なし
+        """
         if url in self.exist_urls:
-            return True
+            return True, "url", None, None
         if not self.exist_titles:
-            return False
+            return False, None, None, None
         if title in self.exist_titles:
-            return True
+            return True, "exact_title", None, title
 
         scored: list[tuple[float, str]] = []
         for t in self.exist_titles:
             ratio = Levenshtein.ratio(t, title)
             if ratio >= self.high_similarity_threshold:
-                return True
+                return True, "high_similarity", None, t
             if ratio >= self.candidate_threshold:
                 scored.append((ratio, t))
 
         if not scored:
-            return False
+            return False, None, None, None
 
         scored.sort(key=lambda x: x[0], reverse=True)
         candidates = [t for _, t in scored[:5]]
+        top_candidate = candidates[0] if candidates else None
 
         noul = self._evaluate_with_jev(title, candidates)
         if noul is not None:
-            return noul >= self.jev_threshold
+            if noul >= self.jev_threshold:
+                return True, "jev", noul, top_candidate
+            return False, None, noul, top_candidate
 
-        return any(r > self.similarity_threshold for r, _ in scored)
+        if any(r > self.similarity_threshold for r, _ in scored):
+            return True, "levenshtein_fallback", None, top_candidate
+
+        return False, None, None, top_candidate
+
+    def is_duplicate(self, title: str, url: str) -> bool:
+        is_dup, reason, noul, top_candidate = self.check_duplicate(title, url)
+        if is_dup and reason == "jev":
+            _logger.info(
+                "[EXCLUDED:duplicate_jev] url=%s, title=%s "
+                "(noul=%.2f, threshold=%.2f, candidate=%s)",
+                url,
+                title,
+                noul if noul is not None else 0.0,
+                self.jev_threshold,
+                top_candidate or "",
+            )
+        return is_dup
 
     def filter(self, items: list[FeedItem]) -> list[FeedItem]:
         filtered: list[FeedItem] = []
