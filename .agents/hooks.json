@@ -1,0 +1,11 @@
+{
+  "problem-auto-fixer": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "python3 ../scripts/check_problems.py",
+        "timeout": 60
+      }
+    ]
+  }
+}

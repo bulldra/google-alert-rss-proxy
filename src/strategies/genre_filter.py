@@ -181,8 +181,8 @@ class GenreFilterStrategy(FilterStrategy):
         category_info = answers.get("feed_category", {})
         selected_choice = category_info.get("choice", "industry_news")
 
-        ai_slop_pct = int(round(slop_noul * 100))
-        is_ai_slop = (ai_slop_pct >= int(round(self.slop_threshold * 100)))
+        ai_slop_pct = round(slop_noul * 100)
+        is_ai_slop = (ai_slop_pct >= round(self.slop_threshold * 100))
 
         # 総合フィードスコア (jevtest 準拠: 0-100%)
         raw_pct = (
@@ -191,7 +191,7 @@ class GenreFilterStrategy(FilterStrategy):
             + ((1.0 - slop_noul) * 0.20)
             + ((1.0 - thin_noul) * 0.15)
         )
-        feed_score_pct = max(0, min(100, int(round(raw_pct * 100))))
+        feed_score_pct = max(0, min(100, round(raw_pct * 100)))
 
         item.category = selected_choice
 
