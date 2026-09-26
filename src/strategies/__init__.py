@@ -2,8 +2,7 @@ from strategies.base import FeedItem, FilterStrategy, ItemFilterStrategy
 from strategies.blacklist_title import BlacklistTitleFilter
 from strategies.blacklist_url import BlacklistUrlFilter
 from strategies.duplicate import DuplicateFilter
-from strategies.gemini_job import GeminiJobFilter
-from strategies.genre_filter import GenreFilterStrategy
+from strategies.jev_filter import GenreFilterStrategy, JevFilter, JevFilterStrategy
 
 __all__ = [
     "FeedItem",
@@ -12,7 +11,8 @@ __all__ = [
     "BlacklistUrlFilter",
     "BlacklistTitleFilter",
     "DuplicateFilter",
+    "JevFilterStrategy",
+    "JevFilter",
     "GenreFilterStrategy",
-    "GeminiJobFilter",
 ]
 

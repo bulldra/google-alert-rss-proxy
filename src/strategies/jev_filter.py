@@ -35,6 +35,25 @@ JEV_QUESTIONS = {
             "or automated synthetic filler)?"
         ),
     },
+    "is_job_posting": {
+        "type": "noul",
+        "instructions": (
+            "Is this content primarily a job listing, career recruitment notice, "
+            "hiring advertisement, freelance gig, or employment opportunity? "
+            "Answer True if it is a job post, hiring notice, recruitment summary, "
+            "or job board listing. Answer False if it is a general news article, "
+            "company press release, market analysis, or technical blog."
+        ),
+    },
+    "is_unsupported_language": {
+        "type": "noul",
+        "instructions": (
+            "Is this content written in a language OTHER than English or Japanese? "
+            "Answer True if the text is in Chinese, Korean, Spanish, French, German, Russian, "
+            "Arabic, Vietnamese, Portuguese, or any language other than English and Japanese. "
+            "Answer False if it is written in English or Japanese."
+        ),
+    },
     "is_promotional_ad": {
         "type": "noul",
         "instructions": (
@@ -59,7 +78,6 @@ JEV_QUESTIONS = {
                 "site utility, empty content)"
             ),
             (
-
                 "Standard Feed (Worth reading, standard news, product announcements, "
                 "sales / promotions, regular blog post, updates)"
             ),
@@ -98,8 +116,12 @@ JEV_QUESTIONS = {
 }
 
 
-class GenreFilterStrategy(FilterStrategy):
-    """Jev System One API (api.typesafe.ai) を用いた AI Slop & 求人・ジャンル除外ストラテジー。"""
+class JevFilterStrategy(FilterStrategy):
+    """Jev System One API (api.typesafe.ai) を用いた総合トリアージ除外ストラテジー。
+
+    一度のAPIリクエストで求人、AI Slop、非対応言語(非日・非英)、サイト案内、
+    低品質コンテンツを一括判定します。
+    """
 
     def __init__(
         self,
@@ -108,12 +130,16 @@ class GenreFilterStrategy(FilterStrategy):
         http_client: httpx.Client | None = None,
         enabled: bool = True,
         slop_threshold: float = 0.60,
+        job_threshold: float = 0.60,
+        lang_threshold: float = 0.60,
         context: dict[str, Any] | None = None,
         model: str | None = None,
         client: Any | None = None,
     ) -> None:
         self.enabled: bool = enabled
         self.slop_threshold: float = slop_threshold
+        self.job_threshold: float = job_threshold
+        self.lang_threshold: float = lang_threshold
         self._api_key: str | None = (
             api_key or os.getenv("jev_api_key") or os.getenv("JEV_API_KEY")
         )
@@ -135,8 +161,7 @@ class GenreFilterStrategy(FilterStrategy):
         text_for_length = f"{item.title} {summary_snippet}".strip()
         char_count = len(text_for_length)
 
-        # RSSメタデータトリアージ用文字数チェック:
-        # 通常のWeb本文用(150文字)ではなく、RSSメタデータは4文字未満のみ空・極小として除外
+        # RSSメタデータトリアージ用文字数チェック: 4文字未満は空・極小として除外
         if char_count < 4:
             item.add_score(1.0, reason="thin_content")
             _logger.info(
@@ -146,7 +171,6 @@ class GenreFilterStrategy(FilterStrategy):
                 char_count,
             )
             return
-
 
         api_key = self._get_api_key()
         state_text = (
@@ -175,6 +199,8 @@ class GenreFilterStrategy(FilterStrategy):
 
         publish_noul = answers.get("should_publish", {}).get("noul", 0.5)
         slop_noul = answers.get("is_ai_slop", {}).get("noul", 0.0)
+        job_noul = answers.get("is_job_posting", {}).get("noul", 0.0)
+        lang_noul = answers.get("is_unsupported_language", {}).get("noul", 0.0)
         thin_noul = answers.get("is_thin_or_useless", {}).get("noul", 0.0)
         priority_info = answers.get("feed_priority", {})
         priority_score = priority_info.get("score", 1.0)
@@ -183,6 +209,8 @@ class GenreFilterStrategy(FilterStrategy):
 
         ai_slop_pct = round(slop_noul * 100)
         is_ai_slop = (ai_slop_pct >= round(self.slop_threshold * 100))
+        is_job = (job_noul >= self.job_threshold or selected_choice == "job_posting")
+        is_unsupported_lang = (lang_noul >= self.lang_threshold)
 
         # 総合フィードスコア (jevtest 準拠: 0-100%)
         raw_pct = (
@@ -195,8 +223,28 @@ class GenreFilterStrategy(FilterStrategy):
 
         item.category = selected_choice
 
-        # jevtest 準拠の 5 軸トリアージ判定
-        if is_ai_slop:
+        # 総合判定（多軸判定を一度に実施）
+        # 1. 英語・日本語以外の言語を除外
+        if is_unsupported_lang:
+            item.add_score(1.0, reason="unsupported_language")
+            _logger.info(
+                "[EXCLUDED:unsupported_language] url=%s, title=%s (lang_noul=%.2f)",
+                item.url,
+                item.title,
+                lang_noul,
+            )
+        # 2. 求人・募集記事を除外
+        elif is_job:
+            item.add_score(1.0, reason="job_posting")
+            _logger.info(
+                "[EXCLUDED:job_posting] url=%s, title=%s (job_noul=%.2f, score=%d%%)",
+                item.url,
+                item.title,
+                job_noul,
+                feed_score_pct,
+            )
+        # 3. AI Slop を除外
+        elif is_ai_slop:
             item.add_score(1.0, reason="ai_slop")
             _logger.info(
                 "[EXCLUDED:ai_slop] url=%s, title=%s (slop=%d%%, score=%d%%, category=%s)",
@@ -206,6 +254,7 @@ class GenreFilterStrategy(FilterStrategy):
                 feed_score_pct,
                 selected_choice,
             )
+        # 4. サイト案内・ユーティリティを除外
         elif selected_choice == "site_utility":
             item.add_score(1.0, reason="site_utility")
             _logger.info(
@@ -214,14 +263,7 @@ class GenreFilterStrategy(FilterStrategy):
                 item.title,
                 feed_score_pct,
             )
-        elif selected_choice == "job_posting":
-            item.add_score(1.0, reason="job_posting")
-            _logger.info(
-                "[EXCLUDED:job_posting] url=%s, title=%s (score=%d%%)",
-                item.url,
-                item.title,
-                feed_score_pct,
-            )
+        # 5. 薄いコンテンツ（thin_noul 高）を除外
         elif thin_noul >= 0.75:
             item.add_score(1.0, reason="thin_content")
             _logger.info(
@@ -231,12 +273,13 @@ class GenreFilterStrategy(FilterStrategy):
                 thin_noul,
                 feed_score_pct,
             )
+        # 6. 製品宣伝・セール告知・PRマーケティング主体の記事は除外せず採用
         elif selected_choice == "promo_marketing" and slop_noul < 0.50:
-            # 製品宣伝・セール告知・PRマーケティング主体の記事は除外せず採用（ログ出力なし）
             pass
+        # 7. 必読・通常採用記事（総合スコア45%以上かつSlop低）
         elif feed_score_pct >= 45 and slop_noul < 0.50:
-            # 必読・通常採用記事（ログ出力なし）
             pass
+        # 8. 総合スコア未達を除外
         else:
             item.add_score(1.0, reason="thin_content")
             _logger.info(
@@ -246,47 +289,45 @@ class GenreFilterStrategy(FilterStrategy):
                 feed_score_pct,
             )
 
-
     def filter(self, items: list[FeedItem]) -> list[FeedItem]:
-
+        """並列に各エントリを Jev System One API で判定し、合格したエントリを返す。"""
         if not self.enabled or not items:
-            return [item for item in items if not item.is_excluded]
+            return items
 
-        # 前段のブラックリストや重複判定ですでに除外されたものはスキップ（Early Exit）
-        candidates: list[FeedItem] = [item for item in items if not item.is_excluded]
-        if not candidates:
-            return []
-
-        # API Key の存在確認（未設定時はフェイルオープン）
         try:
             self._get_api_key()
         except ValueError as e:
-            _logger.warning("GenreFilterStrategy bypassing due to missing API key: %s", e)
-            return candidates
+            _logger.warning("Jev API Key is not set, bypassing JevFilterStrategy: %s", e)
+            return items
 
-        client = self._http_client or httpx.Client(timeout=30.0)
-        should_close_client = self._http_client is None
+        items_to_eval = [item for item in items if not item.is_excluded]
+        if not items_to_eval:
+            return [item for item in items if not item.is_excluded]
 
-        try:
-            max_workers = min(5, len(candidates))
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = {
-                    executor.submit(self._evaluate_single_item, item, client): item
-                    for item in candidates
-                }
-                for future in concurrent.futures.as_completed(futures):
-                    target_item = futures[future]
-                    try:
-                        future.result()
-                    except Exception as e:
-                        _logger.warning(
-                            "Jev evaluation failed for item '%s', passing: %s",
-                            target_item.title,
-                            e,
-                        )
+        if self._http_client:
+            client = self._http_client
+            for item in items_to_eval:
+                try:
+                    self._evaluate_single_item(item, client)
+                except Exception as err:
+                    _logger.warning("Jev evaluation failed for '%s': %s", item.title, err)
+        else:
+            with httpx.Client(timeout=15.0) as client:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                    futures = {
+                        executor.submit(self._evaluate_single_item, item, client): item
+                        for item in items_to_eval
+                    }
+                    for future in concurrent.futures.as_completed(futures):
+                        item = futures[future]
+                        try:
+                            future.result()
+                        except Exception as err:
+                            _logger.warning("Jev evaluation failed for '%s': %s", item.title, err)
 
-            return [item for item in candidates if not item.is_excluded]
+        return [item for item in items if not item.is_excluded]
 
-        finally:
-            if should_close_client:
-                client.close()
+
+# 後方互換性のためのエイリアス
+JevFilter = JevFilterStrategy
+GenreFilterStrategy = JevFilterStrategy

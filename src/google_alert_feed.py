@@ -21,7 +21,7 @@ from strategies import (
     DuplicateFilter,
     FeedItem,
     FilterStrategy,
-    GenreFilterStrategy,
+    JevFilterStrategy,
 )
 
 _logger = logging.getLogger(__name__)
@@ -51,15 +51,16 @@ class GoogleAlertsFeed:
         self._stored_feed_factory = stored_feed_factory or StoredFeed
 
         # スコア蓄積型 Early Exit パイプライン
-        # 順序: URLブラックリスト -> タイトルブラックリスト -> 重複判定 -> ジャンルブラックリスト
+        # 順序: URLブラックリスト -> タイトルブラックリスト -> 重複判定 -> Jev総合判定
         self._url_filter = BlacklistUrlFilter(self._blacklist)
         self._title_filter = BlacklistTitleFilter(self._blacklist)
         self._duplicate_filter = DuplicateFilter(
             similarity_threshold=0.7,
             enabled_jev=enable_gemini,
         )
-        self._genre_filter = GenreFilterStrategy(context=context, enabled=enable_gemini)
-        self._gemini_filter = self._genre_filter
+        self._jev_filter = JevFilterStrategy(context=context, enabled=enable_gemini)
+        self._genre_filter = self._jev_filter
+        self._gemini_filter = self._jev_filter
 
         if strategies is not None:
             self._strategies = strategies
@@ -68,7 +69,7 @@ class GoogleAlertsFeed:
                 self._url_filter,
                 self._title_filter,
                 self._duplicate_filter,
-                self._genre_filter,
+                self._jev_filter,
             ]
 
 

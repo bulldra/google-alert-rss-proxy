@@ -20,8 +20,9 @@ Google Alert が生成する RSS フィードを、Slack や RSS リーダー等
      - 同一 URL の重複を即時除外。
      - タイトルのレーベンシュタイン距離による高速候補抽出に加え、**Jev System One の `is_duplicate` (noul)** による意味的判定を行い、言い回しが異なる同一ニュース・重複記事も高精度に除外（Jev 未設定・通信障害時は従来の類似度判定へ自動フォールバック）。
      - **GCS キャッシュに蓄積された過去最大7日分の全エントリとも比較**し、過去に配信済みのエントリの再通知を防止。
-   - **Stage 4: ジャンルブラックリスト (`GenreFilterStrategy`)**:
-     - **Jev System One API** (`https://api.typesafe.ai/v1/systemone`) を活用し、高精度なトリアージ判定を実行。
+   - **Stage 4: Jev 総合トリアージ (`JevFilterStrategy`)**:
+     - **Jev System One API** (`https://api.typesafe.ai/v1/systemone`) を活用し、1回のリクエストで全要素（言語・求人・AI Slop・サイト案内・低品質）を一括判定。
+     - **非対応言語 (`unsupported_language`)**: 英語・日本語以外の言語（中国語、韓国語、欧州言語等）で書かれた記事を除外。
      - **求人・募集記事 (`job_posting`)**: 転職・採用・アルバイト・業務委託案件・副業募集などを除外。
      - **AI Slop (`ai_slop`)**: 汎用LLMによる薄い自動生成まとめ、定型文の羅列、独自取材や一次情報が皆無のスパム記事を除外（Slop 確信度 >= 60%）。
      - **サイト案内 (`site_utility`)**: サイトトップページ、利用規約、ログイン画面等の静的ページを除外。
@@ -34,6 +35,7 @@ Google Alert が生成する RSS フィードを、Slack や RSS リーダー等
      - `[EXCLUDED:blacklist_url] url=https://spam.xyz/..., title=...`
      - `[EXCLUDED:blacklist_title] url=https://..., title=...`
      - `[EXCLUDED:duplicate_jev] url=https://..., title=... (noul=0.85, threshold=0.60, candidate=...)`
+     - `[EXCLUDED:unsupported_language] url=https://..., title=... (lang_noul=0.95)`
      - `[EXCLUDED:job_posting] url=https://..., title=...`
      - `[EXCLUDED:ai_slop] url=https://..., title=... (slop=85%, score=15%)`
    - Cloud Logging で `jsonPayload.message =~ "\[EXCLUDED"` でクエリすることで、除外された URL と理由を簡単にレビューできます。
@@ -59,11 +61,11 @@ flowchart TD
     S2 -->|通過| S3{"Stage 3: 過去キャッシュ & 重複照合<br/>(GCS 7日間 / Jev noul & Levenshtein)"}
     S3 -->|重複・既配信| E3["除外 (Early Exit: duplicate)"]
 
-    S3 -->|通過| S4["Stage 4: Jev System One 評価<br/>(StateとQuestionの直交評価)"]
+    S3 -->|通過| S4["Stage 4: Jev 総合判定<br/>(言語・求人・Slop・品質を一括評価)"]
 
     subgraph JevTriage ["Jev 多段トリアージ"]
         S4 --> JevExit{"Jev アーリーイグジット"}
-        JevExit -->|求人 / AI Slop高 / サイト案内| E4["除外 (Early Exit: 即座に撃墜)"]
+        JevExit -->|非対応言語 / 求人 / Slop高 / 案内| E4["除外 (Early Exit: 即座に撃墜)"]
         JevExit -->|宣伝・セールPR| Pass1["通過 (採用: 宣伝/セール)"]
         JevExit -->|グレーゾーン| ScalarScore["係数を掛けたスカラー値化<br/>(総合フィードスコア: 0〜100%)"]
         ScalarScore --> ThresholdCheck{"総合スコア 45%以上<br/>かつ Slop 50%未満"}

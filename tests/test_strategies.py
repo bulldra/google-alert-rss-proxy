@@ -8,10 +8,8 @@ from strategies import (
     BlacklistUrlFilter,
     DuplicateFilter,
     FeedItem,
-    GeminiJobFilter,
-    GenreFilterStrategy,
+    JevFilterStrategy,
 )
-from strategies.gemini_job import JobExclusionResult
 
 
 def test_blacklist_url_filter() -> None:
@@ -138,68 +136,122 @@ def test_duplicate_filter_with_jev_miss() -> None:
     assert not item.is_excluded
 
 
-def test_gemini_job_filter_success() -> None:
+def test_jev_filter_unsupported_language(caplog: pytest.LogCaptureFixture) -> None:
+    """英語・日本語以外の言語（中国語、韓国語、スペイン語等）が除外されることを検証。"""
+    mock_http_client = MagicMock()
+    mock_res = MagicMock()
+    mock_res.raise_for_status.return_value = None
+    mock_res.json.return_value = {
+        "answers": {
+            "is_unsupported_language": {"noul": 0.95},
+            "is_job_posting": {"noul": 0.05},
+            "is_ai_slop": {"noul": 0.05},
+            "is_thin_or_useless": {"noul": 0.05},
+            "should_publish": {"noul": 0.5},
+            "feed_priority": {"score": 1.0},
+            "feed_category": {"choice": "industry_news"},
+        }
+    }
+    mock_http_client.post.return_value = mock_res
+
+    strategy = JevFilterStrategy(api_key="test_key", http_client=mock_http_client)
+    item = FeedItem(
+        title="这是一篇关于人工智能的中文报道",
+        url="https://example.com/zh-article",
+        summary="关于最新科技趋势的分析与讨论",
+    )
+    with caplog.at_level(logging.INFO):
+        filtered = strategy.filter([item])
+
+    assert len(filtered) == 0
+    assert item.is_excluded
+    assert item.exclude_reason == "unsupported_language"
+    assert "[EXCLUDED:unsupported_language]" in caplog.text
+
+
+def test_jev_filter_job_posting_exclusion(caplog: pytest.LogCaptureFixture) -> None:
+    """求人・募集記事が is_job_posting により即座に除外されることを検証。"""
+    mock_http_client = MagicMock()
+    mock_res = MagicMock()
+    mock_res.raise_for_status.return_value = None
+    mock_res.json.return_value = {
+        "answers": {
+            "is_unsupported_language": {"noul": 0.05},
+            "is_job_posting": {"noul": 0.92},
+            "is_ai_slop": {"noul": 0.05},
+            "is_thin_or_useless": {"noul": 0.05},
+            "should_publish": {"noul": 0.2},
+            "feed_priority": {"score": 0.0},
+            "feed_category": {"choice": "job_posting"},
+        }
+    }
+    mock_http_client.post.return_value = mock_res
+
+    strategy = JevFilterStrategy(api_key="test_key", http_client=mock_http_client)
+    item = FeedItem(
+        title="【急募】バックエンドエンジニア（フルリモート）年収800万〜",
+        url="https://example.com/job",
+        summary="大手Web企業でのバックエンドエンジニア求人募集です。",
+    )
+    with caplog.at_level(logging.INFO):
+        filtered = strategy.filter([item])
+
+    assert len(filtered) == 0
+    assert item.is_excluded
+    assert item.exclude_reason == "job_posting"
+    assert "[EXCLUDED:job_posting]" in caplog.text
+
+
+def test_jev_filter_english_and_japanese_allowed() -> None:
+    """英語記事および日本語記事は言語除外されず採用されることを検証。"""
+    mock_http_client = MagicMock()
+    mock_res = MagicMock()
+    mock_res.raise_for_status.return_value = None
+    mock_res.json.return_value = {
+        "answers": {
+            "is_unsupported_language": {"noul": 0.05},
+            "is_job_posting": {"noul": 0.05},
+            "is_ai_slop": {"noul": 0.05},
+            "is_thin_or_useless": {"noul": 0.05},
+            "should_publish": {"noul": 0.9},
+            "feed_priority": {"score": 2.0},
+            "feed_category": {"choice": "tech_guide"},
+        }
+    }
+    mock_http_client.post.return_value = mock_res
+
+    strategy = JevFilterStrategy(api_key="test_key", http_client=mock_http_client)
     items = [
         FeedItem(
-            title="【Pythonエンジニア急募】月給60万〜 フルリモート案件",
-            url="https://example.com/job1",
-            summary="大手Web企業でのバックエンド開発エンジニア募集。実務経験3年以上。",
+            title="Building High-Performance Distributed Systems in Go",
+            url="https://example.com/en-article",
+            summary="A deep dive into concurrency patterns and distributed tracing.",
         ),
         FeedItem(
-            title="Google Cloudの新機能リリース発表まとめ",
-            url="https://example.com/news1",
-            summary="Google Cloudは最新のAIモデルを発表しました。",
-        ),
-        FeedItem(
-            title="転職サイトおすすめランキング2026",
-            url="https://example.com/job2",
-            summary="未経験からIT業界へ転職するための求人サイト比較。",
+            title="Python 3.14の最新機能解説と活用法",
+            url="https://example.com/ja-article",
+            summary="新機能の詳細とパフォーマンス改善についての解説。",
         ),
     ]
-
-    # モッククライアントのセットアップ
-    mock_client = MagicMock()
-    mock_response = MagicMock()
-    mock_response.parsed = JobExclusionResult(excluded_indices=[0, 2])
-    mock_client.models.generate_content.return_value = mock_response
-
-    strategy = GeminiJobFilter(client=mock_client, model="gemini-3.5-flash-lite")
     filtered = strategy.filter(items)
-
-    assert len(filtered) == 1
-    assert filtered[0].title == "Google Cloudの新機能リリース発表まとめ"
-    mock_client.models.generate_content.assert_called_once()
-
-
-def test_gemini_job_filter_disabled() -> None:
-    items = [
-        FeedItem(title="求人情報", url="https://example.com/1"),
-    ]
-    mock_client = MagicMock()
-    strategy = GeminiJobFilter(client=mock_client, enabled=False)
-
-    filtered = strategy.filter(items)
-    assert len(filtered) == 1
-    mock_client.models.generate_content.assert_not_called()
+    assert len(filtered) == 2
+    assert not items[0].is_excluded
+    assert not items[1].is_excluded
 
 
-def test_gemini_job_filter_fallback_on_error() -> None:
-    items = [
-        FeedItem(title="テスト記事", url="https://example.com/1"),
-    ]
-    mock_client = MagicMock()
-    mock_client.models.generate_content.side_effect = RuntimeError("API Timeout")
+def test_jev_filter_fallback_on_error() -> None:
+    """Jev APIエラー時でも例外を送出せず、フェイルオープン（元アイテムを返す）することを検証。"""
+    mock_http_client = MagicMock()
+    mock_http_client.post.side_effect = RuntimeError("API Timeout")
 
-    strategy = GeminiJobFilter(client=mock_client, enabled=True)
-    # エラー発生時でも例外を送出せず、フェイルオープン（元アイテムを返す）
+    strategy = JevFilterStrategy(api_key="test_key", http_client=mock_http_client)
+    items = [FeedItem(title="テスト記事", url="https://example.com/1")]
     filtered = strategy.filter(items)
     assert len(filtered) == 1
     assert filtered[0].title == "テスト記事"
 
 
 def test_genre_filter_strategy_jevtest_rules() -> None:
-    from strategies.genre_filter import GenreFilterStrategy
-
     items = [
         FeedItem(
             title="【急募】バックエンドエンジニア（フルリモート）",
@@ -281,7 +333,7 @@ def test_genre_filter_strategy_jevtest_rules() -> None:
 
     mock_http_client.post.side_effect = mock_post
 
-    strategy = GenreFilterStrategy(api_key="test_key", http_client=mock_http_client)
+    strategy = JevFilterStrategy(api_key="test_key", http_client=mock_http_client)
     filtered = strategy.filter(items)
 
     assert len(filtered) == 2
@@ -299,15 +351,13 @@ def test_genre_filter_strategy_jevtest_rules() -> None:
 
 
 def test_score_accumulation_and_early_exit_pipeline() -> None:
-    from strategies.genre_filter import GenreFilterStrategy
-
     # 1. URLブラックリスト
     url_filter = BlacklistUrlFilter({"tlds": ["xyz"], "domains": [], "patterns": []})
     # 2. タイトルブラックリスト
     title_filter = BlacklistTitleFilter({"title_keywords": ["NGワード"]})
     # 3. 重複判定
     duplicate_filter = DuplicateFilter(similarity_threshold=0.7)
-    # 4. ジャンル判定 (モック)
+    # 4. Jev総合判定 (モック)
     mock_http_client = MagicMock()
     mock_res = MagicMock()
     mock_res.raise_for_status.return_value = None
@@ -321,7 +371,7 @@ def test_score_accumulation_and_early_exit_pipeline() -> None:
         }
     }
     mock_http_client.post.return_value = mock_res
-    genre_filter = GenreFilterStrategy(api_key="test_key", http_client=mock_http_client)
+    jev_filter = JevFilterStrategy(api_key="test_key", http_client=mock_http_client)
 
     items = [
         FeedItem(title="スパムTLD記事", url="https://spam.xyz/bad"),
@@ -330,7 +380,7 @@ def test_score_accumulation_and_early_exit_pipeline() -> None:
         FeedItem(title="通常の技術記事", url="https://example.com/ok"),  # 重複
     ]
 
-    pipeline = [url_filter, title_filter, duplicate_filter, genre_filter]
+    pipeline = [url_filter, title_filter, duplicate_filter, jev_filter]
 
     # パイプライン実行（Early Exit）
     for stage in pipeline:
@@ -378,9 +428,9 @@ def test_exclusion_logging(caplog: pytest.LogCaptureFixture) -> None:
         }
     }
     mock_http_client.post.return_value = mock_res
-    genre_filter = GenreFilterStrategy(api_key="test_key", http_client=mock_http_client)
+    jev_filter = JevFilterStrategy(api_key="test_key", http_client=mock_http_client)
 
-    for stage in [url_filter, title_filter, duplicate_filter, genre_filter]:
+    for stage in [url_filter, title_filter, duplicate_filter, jev_filter]:
         items = stage.filter(items)
 
     # ログ出力内容を検証
